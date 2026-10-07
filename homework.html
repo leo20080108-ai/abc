@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="音樂聆聽統計與影片展示">
+  <title>Music Statistics</title>
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: rgba(255, 255, 255, 0.92);
+      --text: #252735;
+      --muted: #777b8b;
+      --accent: #8b7cf6;
+      --accent-2: #63c8c8;
+      --bar-bg: #ececf4;
+      --shadow: 0 12px 35px rgba(45, 48, 75, 0.10);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        "Noto Sans TC",
+        "Microsoft JhengHei",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(139, 124, 246, 0.12), transparent 30%),
+        radial-gradient(circle at 90% 20%, rgba(99, 200, 200, 0.12), transparent 28%),
+        var(--bg);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 55px 0 28px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(139, 124, 246, 0.12);
+      color: #6d60d8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(2rem, 5vw, 3.3rem);
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 0 auto;
+      max-width: 650px;
+      color: var(--muted);
+    }
+
+    .media-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 22px;
+      margin: 20px 0 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .media-card {
+      padding: 12px;
+    }
+
+    .image-wrap {
+      overflow: hidden;
+      border-radius: 16px;
+      background: #e9e9ef;
+      aspect-ratio: 1 / 1.18;
+    }
+
+    .image-wrap img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .image-wrap:hover img {
+      transform: scale(1.025);
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #111;
+    }
+
+    .video-wrap iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .media-title {
+      margin: 12px 5px 2px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .section {
+      margin: 22px 0;
+      padding: clamp(20px, 4vw, 34px);
+    }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 1.8rem);
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    #chart {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 105px minmax(0, 1fr) 80px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .artist {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 30px;
+      border-radius: 999px;
+      background: var(--bar-bg);
+      overflow: hidden;
+    }
+
+    .bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 4px 12px rgba(99, 200, 200, 0.22);
+      transition: width 1.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .link-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 54px;
+      padding: 12px 18px;
+      border-radius: 15px;
+      color: white;
+      background: linear-gradient(135deg, #8b7cf6, #6d60d8);
+      text-decoration: none;
+      font-weight: 700;
+      box-shadow: 0 8px 18px rgba(109, 96, 216, 0.22);
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+    }
+
+    .link-button:nth-child(2) {
+      background: linear-gradient(135deg, #63c8c8, #45a9a9);
+      box-shadow: 0 8px 18px rgba(69, 169, 169, 0.22);
+    }
+
+    .link-button:nth-child(3) {
+      background: linear-gradient(135deg, #f49b9b, #df7474);
+      box-shadow: 0 8px 18px rgba(223, 116, 116, 0.22);
+    }
+
+    .link-button:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.04);
+      box-shadow: 0 12px 24px rgba(45, 48, 75, 0.18);
+    }
+
+    .link-button:active {
+      transform: translateY(-1px);
+    }
+
+    footer {
+      padding: 10px 0 45px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 760px) {
+      header {
+        padding-top: 35px;
+      }
+
+      .media-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .image-wrap {
+        aspect-ratio: 1 / 1.1;
+      }
+
+      .bar-row {
+        grid-template-columns: 80px minmax(0, 1fr) 68px;
+        gap: 8px;
+      }
+
+      .artist {
+        font-size: 0.9rem;
+      }
+
+      .value {
+        font-size: 0.9rem;
+      }
+
+      .buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .container {
+        width: min(100% - 20px, 1100px);
+      }
+
+      .section {
+        padding: 18px 14px;
+      }
+
+      .bar-row {
+        grid-template-columns: 72px minmax(0, 1fr) 62px;
+      }
+
+      .bar-track {
+        height: 24px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .bar,
+      .image-wrap img,
+      .link-button {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <header>
+      <span class="eyebrow">MUSIC • 2026</span>
+      <h1>網際網路作業</h1>
+      <p class="subtitle">
+        這裡放了一些我個人的喜好
+      </p>
+    </header>
+
+    <section class="media-grid">
+      <article class="card media-card">
+        <div class="image-wrap">
+          <img
+            src="https://tuki-official.net/s3/skiyaki/uploads/link/image/55203/32147_KV.jpg"
+            alt="tuki. 官方圖片"
+            loading="lazy"
+          >
+        </div>
+        <div class="media-title">tuki.</div>
+      </article>
+
+      <article class="card media-card">
+        <div class="video-wrap">
+          <iframe
+            src="https://www.youtube.com/embed/x60xR0TEQ88"
+            title="YouTube video player"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen>
+          </iframe>
+        </div>
+        <div class="media-title">YouTube Video</div>
+      </article>
+    </section>
+
+    <section class="card section">
+      <div class="section-heading">
+        <div>
+          <h2>個別歌手聽過的次數</h2>
+        </div>
+        <p>播放次數統計</p>
+      </div>
+
+      <div id="chart" aria-label="歌手聽過次數長條圖"></div>
+    </section>
+
+    <section class="card section">
+      <div class="section-heading">
+        <div>
+          <h2>更多連結</h2>
+        </div>
+        <p>點擊按鈕前往網站</p>
+      </div>
+
+      <nav class="buttons" aria-label="網站連結">
+        <a class="link-button"
+           href="https://c126624900-dev.github.io/hpminus100/"
+           target="_blank"
+           rel="noopener noreferrer">
+          HP Minus 100
+        </a>
+
+        <a class="link-button"
+           href="https://xieh1123.github.io/homework/"
+           target="_blank"
+           rel="noopener noreferrer">
+          Homework
+        </a>
+
+        <a class="link-button"
+           href="https://ron0531.github.io/HIHI/"
+           target="_blank"
+           rel="noopener noreferrer">
+          HIHI
+        </a>
+      </nav>
+    </section>
+
+    <footer>
+      Music Statistics · Responsive Web Page
+    </footer>
+  </main>
+
+  <script>
+    // ==============================
+    // 長條圖資料
+    // ==============================
+    const musicData = [
+      { name: "tuki.", count: 658 },
+      { name: "Yourushika", count: 447 },
+      { name: "Ado", count: 1782 },
+      { name: "YOASOBI", count: 345 },
+      { name: "Yama", count: 6725 },
+      { name: "Uru", count: 457 }
+    ];
+
+    const chart = document.getElementById("chart");
+    const maxCount = Math.max(...musicData.map(item => item.count));
+
+    // 建立長條圖
+    musicData.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const artist = document.createElement("div");
+      artist.className = "artist";
+      artist.textContent = item.name;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.setAttribute("role", "progressbar");
+      bar.setAttribute("aria-label", `${item.name} ${item.count} 次`);
+      bar.setAttribute("aria-valuemin", "0");
+      bar.setAttribute("aria-valuemax", String(maxCount));
+      bar.setAttribute("aria-valuenow", String(item.count));
+
+      const value = document.createElement("div");
+      value.className = "value";
+      value.textContent = "0";
+
+      track.appendChild(bar);
+      row.appendChild(artist);
+      row.appendChild(track);
+      row.appendChild(value);
+      chart.appendChild(row);
+
+      // 延遲啟動，形成依序播放的動畫效果
+      setTimeout(() => {
+        bar.style.width = `${(item.count / maxCount) * 100}%`;
+
+        // 數字同步動畫
+        const duration = 1200;
+        const startTime = performance.now();
+
+        function animateNumber(now) {
+          const progress = Math.min((now - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          value.textContent = Math.round(item.count * eased).toLocaleString();
+
+          if (progress < 1) {
+            requestAnimationFrame(animateNumber);
+          }
+        }
+
+        requestAnimationFrame(animateNumber);
+      }, index * 180);
+    });
+  </script>
+</body>
+</html>
